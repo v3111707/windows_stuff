@@ -2,7 +2,6 @@ $fqdn =  "*.$((Get-ADDomain).DNSRoot)"
 $FederationServiceDisplayName = "Contoso Corp"
 $domain = (Get-ADDomain).Name
 
-
 Add-KdsRootKey –EffectiveTime ((get-date).addhours(-10))
 
 Write-Host "Installing nuget package provider"

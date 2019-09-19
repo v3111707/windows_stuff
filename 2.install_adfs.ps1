@@ -17,7 +17,7 @@ $params = @{
   NotAfter = (Get-Date).AddYears(5)
   CertStoreLocation = 'Cert:\LocalMachine\My'
   KeyUsage = 'CertSign','CRLSign'
-  Subject = "CN=Contoso Corp Root CA, OU=Sandbox" #fixes invalid cert error
+  Subject = "CN=Contoso Corp Root CA, OU=Sandbox"
 }
 $rootCA = New-SelfSignedCertificate @params
 

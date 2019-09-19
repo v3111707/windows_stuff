@@ -44,6 +44,7 @@ Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0
 Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0
 Write-Host "IE Enhanced Security Configuration (ESC) has been disabled." -ForegroundColor Green
 
+Restart-Computer
 
 '''
 https://adfs.contoso.loc/adfs/fs/federationserverservice.asmx

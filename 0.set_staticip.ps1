@@ -17,4 +17,3 @@ Set-DnsClientServerAddress -InterfaceIndex $interface_data.InterfaceIndex -Serve
 
 Rename-Computer -NewName "dc"
 Restart-Computer
-

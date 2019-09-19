@@ -6,26 +6,39 @@ $FederationServiceName = "adfs.$dnsroot"
 
 Add-KdsRootKey –EffectiveTime ((get-date).addhours(-10))
 
-Write-Host "Installing nuget package provider"
-Install-PackageProvider nuget -force
-
-Write-Host "Installing PSPKI module"
-Install-Module -Name PSPKI -Force
-
-Write-Host "Importing PSPKI into current environment"
-Import-Module -Name PSPKI
-
 Write-Host "Generating Certificate"
-$selfSignedCert = New-SelfSignedCertificateEx `
-    -Subject "CN=*.$dnsroot" `
-    -ProviderName "Microsoft Enhanced RSA and AES Cryptographic Provider" `
-    -KeyLength 2048 -FriendlyName 'OAFED SelfSigned' -SignatureAlgorithm sha256 `
-    -EKU "Server Authentication", "Client authentication" `
-    -KeyUsage "KeyEncipherment, DigitalSignature" `
-    -Exportable -StoreLocation "LocalMachine" `
-    -SubjectAlternativeName ("dns:*.$dnsroot", "dns:certauth.$FederationServiceName" ,"dns:$FederationServiceName")
 
-$certThumbprint = $selfSignedCert.Thumbprint
+$params = @{
+  DnsName = "$FederationServiceDisplayName Root Cert"
+  KeyLength = 2048
+  KeyAlgorithm = 'RSA'
+  HashAlgorithm = 'SHA256'
+  KeyExportPolicy = 'Exportable'
+  NotAfter = (Get-Date).AddYears(5)
+  CertStoreLocation = 'Cert:\LocalMachine\My'
+  KeyUsage = 'CertSign','CRLSign'
+  Subject = "CN=Contoso Corp Root CA, OU=Sandbox" #fixes invalid cert error
+}
+$rootCA = New-SelfSignedCertificate @params
+
+$params = @{
+  Subject="CN=*.$dnsroot"
+  Signer = $rootCA
+  KeyLength = 2048
+  KeyAlgorithm = 'RSA'
+  HashAlgorithm = 'SHA256'
+  KeyExportPolicy = 'Exportable'
+  NotAfter = (Get-date).AddYears(2)
+  CertStoreLocation = 'Cert:\LocalMachine\My'
+  DnsName = "*.$dnsroot", "certauth.$FederationServiceName" ,"$FederationServiceName"
+}
+$adfs_cert = New-SelfSignedCertificate @params
+
+New-Item "C:\certs" -ItemType Directory
+Export-Certificate -Cert $rootCA -FilePath "C:\certs\rootCA.crt"
+Import-Certificate -CertStoreLocation 'Cert:\LocalMachine\Root' -FilePath "C:\certs\rootCA.crt"
+
+$certThumbprint =  $adfs_cert.Thumbprint
 
 Write-Host "Installing ADFS"
 Install-WindowsFeature -IncludeManagementTools -Name ADFS-Federation
@@ -34,9 +47,7 @@ Write-Host "Configuring ADFS"
 Import-Module ADFS
 Install-AdfsFarm -CertificateThumbprint $certThumbprint -FederationServiceName $FederationServiceName -FederationServiceDisplayName $FederationServiceDisplayName -GroupServiceAccountIdentifier "$domain\ADFSgmsa$" -OverwriteConfiguration
 
-Set-AdfsProperties -EnableIdPInitiatedSignonPage $true
 Add-DnsServerResourceRecordCName -Name "adfs" -HostNameAlias $fqdn -ZoneName $dnsroot
-
 
 $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
 $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
@@ -50,5 +61,10 @@ Restart-Computer
 https://adfs.contoso.loc/adfs/fs/federationserverservice.asmx
 
 https://adfs.contoso.loc/adfs/ls/idpinitiatedsignon.htm
+
+
+https://adfs.contoso.loc/adfs/oauth2/authorize
+
+https://adfs.contoso.loc/adfs/oauth2/token
 
 '''
